@@ -1,4 +1,7 @@
-﻿using System.Text;
+﻿using System.Data;
+using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -8,8 +11,6 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using System.Text.RegularExpressions;
-using System.Data;
 
 namespace Laba16_KuzVah;
 
@@ -62,17 +63,35 @@ public partial class MainWindow : Window
 
     private void Convert_Click(object sender, RoutedEventArgs e)
     {
-        if (string.IsNullOrEmpty(txtCurrency.Text)) { MessageBox.Show("Please enter amount"); return; }
+        if (string.IsNullOrWhiteSpace(txtCurrency.Text))
+        {
+            MessageBox.Show("Введите сумму", "Информация",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
         if (cmbFromCurrency.SelectedIndex <= 0 || cmbToCurrency.SelectedIndex <= 0)
         {
-            MessageBox.Show("Please select currencies"); return;
+            MessageBox.Show("Выберите валюты (из/в)", "Информация",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
         }
-        double amount = double.Parse(txtCurrency.Text);
-        double fromValue = double.Parse(cmbFromCurrency.SelectedValue.ToString());
 
-        
+        if (!decimal.TryParse(txtCurrency.Text, NumberStyles.Number, CultureInfo.CurrentCulture, out decimal amount) &&
+                !decimal.TryParse(txtCurrency.Text, NumberStyles.Number, CultureInfo.InvariantCulture, out amount))
+        {
+            MessageBox.Show("Неверный формат числа", "Ошибка",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        decimal fromValue = decimal.Parse(cmbFromCurrency.SelectedValue.ToString());
+        decimal toValue = decimal.Parse(cmbToCurrency.SelectedValue.ToString());
+        decimal result = (amount * fromValue) / toValue;
+
+        lblCurrency.Content = $"{cmbToCurrency.Text} {result:N3}";
     }
-     
+
     private void Clear_Click(object sender, RoutedEventArgs e)
     {
         ClearControls();
@@ -95,7 +114,20 @@ public partial class MainWindow : Window
 
     private void NumberValidationTextBox(object sender, TextCompositionEventArgs e)
     {
-       
+        var tb = txtCurrency;
+        if (!Regex.IsMatch(e.Text, @"^[0-9.,]$"))
+        {
+            e.Handled = true;
+            return;
+        }
+
+        if ((e.Text == "." && tb.Text.Contains(".")) ||
+            (e.Text == "," && tb.Text.Contains(",")) ||
+            (tb.Text.Contains(".") && e.Text == ".") ||
+            (tb.Text.Contains(",") && e.Text == ","))
+        {
+            e.Handled = true;
+        }
     }
 
     private void txtCurrency_TextChanged_1(object sender, TextChangedEventArgs e)
